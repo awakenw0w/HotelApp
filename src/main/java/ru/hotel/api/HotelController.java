@@ -5,6 +5,7 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 
+import jakarta.servlet.http.HttpSession;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,7 +28,9 @@ public class HotelController {
 
     /** Возвращает номера вместе с типом, категорией и последним известным статусом. */
     @GetMapping("/rooms")
-    public List<Map<String, Object>> getRooms() {
+    public List<Map<String, Object>> getRooms(HttpSession session) {
+        requireLogin(session);
+
         String sql = """
                 SELECT
                     r.room_id AS roomId,
@@ -63,7 +66,9 @@ public class HotelController {
 
     /** Возвращает список гостей, отсортированный по фамилии и имени. */
     @GetMapping("/guests")
-    public List<Map<String, Object>> getGuests() {
+    public List<Map<String, Object>> getGuests(HttpSession session) {
+        requireLogin(session);
+
         String sql = """
                 SELECT
                     guest_id AS guestId,
@@ -83,7 +88,10 @@ public class HotelController {
     @GetMapping("/stays")
     public List<Map<String, Object>> getStays(
             @RequestParam(required = false) String from,
-            @RequestParam(required = false) String to) {
+            @RequestParam(required = false) String to,
+            HttpSession session) {
+
+        requireLogin(session);
 
         String sqlWithoutDates = """
                 SELECT
@@ -150,5 +158,12 @@ public class HotelController {
                 """;
 
         return jdbcTemplate.queryForList(sqlForDates, toDate, fromDate);
+    }
+
+    /** Не отдаёт данные гостиницы до входа в систему. */
+    private void requireLogin(HttpSession session) {
+        if (session.getAttribute("userId") == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Сначала войдите в систему");
+        }
     }
 }
